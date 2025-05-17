@@ -21,7 +21,7 @@ CD /D %dir%
 
 SET total=0
 
-REM includes files which are non-directory, not hidden or system files
+REM dir /a:-d-h-s - includes files which are non-directory, not hidden or system files
 FOR /F %%f IN ('dir /a:-d-h-s ^| FIND "File(s)"') DO (
 	IF %ERRORLEVEL% EQU 0 (
 		SET /a total=%%f
@@ -51,31 +51,32 @@ ECHO making %dir:"=%\Renamed
 ECHO:
 MD Renamed
 
-SET renamed_dir=%dir%
-SET "renamed_dir=%renamed_dir%\Renamed"
+SET renamed_dir=%dir:"=%
+SET renamed_dir=%renamed_dir%\Renamed
 
-:RENAME
+:EXTRACTION
+FOR /F "delims=" %%f IN ('dir /a:-d-h-s /b') DO CALL :RENAME_SUBROUTINE "%%f"
+GOTO :RENAME_FINISHED
 
-REM With loop commands like FOR, compound or bracketed expressions, Delayed Expansion will allow you to always read the current value of the variable.
-SETLOCAL enabledelayedexpansion
+:RENAME_SUBROUTINE
+SET name=%~n1
+SET ext=%~x1
 
-FOR /F "tokens=1,2 delims=." %%f IN ('dir /a:-d-h-s /b') DO (
-	SET name=%%f
-	SET ext=%%g
+SET new_name=%name%
 
-	SET new_name=!name!
+if NOT %prefix%=="" SET new_name=%prefix%%new_name%
+if NOT %suffix%=="" SET new_name=%new_name%%suffix%
 
-	if NOT !prefix!=="" SET new_name=!prefix!!new_name!
-	if NOT !suffix!=="" SET new_name=!new_name!!suffix!
+ECHO renaming %name%%ext% to %new_name%%ext%
 
-	ECHO renaming !name!.!ext! to !new_name!.!ext!
+SET "fromPath=%dir:"=%\%name%%ext%"
+SET "toPath=%renamed_dir%\%new_name%%ext%"
 
-	REM hide output with NUL
-	COPY /y !dir!\!name!.!ext! !renamed_dir!\!new_name!.!ext! 1>NUL
-)
+REM hide output with NUL
+COPY /y "%fromPath%" "%toPath%" 1>NUL
+EXIT /B
 
-SETLOCAL disabledelayedexpansion
-
+:RENAME_FINISHED
 ECHO:
 ECHO rename all %total% files
 ECHO:
